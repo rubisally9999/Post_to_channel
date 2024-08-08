@@ -4,7 +4,6 @@ import logging
 from flask import Flask, request, send_from_directory
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters, CallbackContext
-import pyshorteners
 
 app = Flask(__name__)
 
@@ -16,11 +15,12 @@ logger = logging.getLogger(__name__)
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 CHANNEL_ID = os.getenv('CHANNEL_ID')
-SHORTENER_API_KEY = os.getenv('SHORTENER_API_KEY')
-SHORTENER_TYPE = os.getenv('SHORTENER_TYPE', 'tinyurl')  # Default to 'tinyurl' if not specified
+SHORTENER_API_KEY = os.getenv('SHORTENER_API_KEY')  # API key for publicearn
+SHORTENER_ALIAS = os.getenv('SHORTENER_ALIAS')  # Custom alias if needed
 
-# Log the SHORTENER_TYPE value
-logger.debug(f"SHORTENER_TYPE value: {SHORTENER_TYPE}")
+# Log the configuration values
+logger.debug(f"SHORTENER_API_KEY: {SHORTENER_API_KEY}")
+logger.debug(f"SHORTENER_ALIAS: {SHORTENER_ALIAS}")
 
 # Check required environment variables
 if not TELEGRAM_TOKEN:
@@ -29,22 +29,26 @@ if not WEBHOOK_URL:
     raise ValueError("WEBHOOK_URL environment variable is not set.")
 if not CHANNEL_ID:
     raise ValueError("CHANNEL_ID environment variable is not set.")
-if SHORTENER_TYPE == 'bitly' and not SHORTENER_API_KEY:
-    raise ValueError("SHORTENER_API_KEY environment variable is not set for bitly.")
+if not SHORTENER_API_KEY:
+    raise ValueError("SHORTENER_API_KEY environment variable is not set.")
 
-# Initialize Telegram bot and URL shortener
+# Initialize Telegram bot
 bot = Bot(token=TELEGRAM_TOKEN)
 dispatcher = Dispatcher(bot, None, workers=0)
 
-# Initialize URL shortener based on type
-s = None
-if SHORTENER_TYPE == 'tinyurl':
-    s = pyshorteners.Shortener().tinyurl
-elif SHORTENER_TYPE == 'bitly':
-    s = pyshorteners.Shortener(api_key=SHORTENER_API_KEY).bitly
-else:
-    logger.error(f"Unsupported SHORTENER_TYPE: {SHORTENER_TYPE}. Use 'tinyurl' or 'bitly'.")
-    raise ValueError("Unsupported SHORTENER_TYPE. Use 'tinyurl' or 'bitly'.")
+# Function to shorten URL using publicearn.com API
+def shorten_url_with_publicearn(url):
+    api_key = SHORTENER_API_KEY
+    alias = SHORTENER_ALIAS
+    shortener_url = f"https://publicearn.com/api?api={api_key}&url={url}&alias={alias}"
+    try:
+        response = requests.get(shortener_url)
+        response.raise_for_status()
+        data = response.json()
+        return data.get('shortened_url', url)  # Fallback to original URL if not found
+    except Exception as e:
+        logger.error(f"Error shortening URL: {e}")
+        raise
 
 # Define the start command handler
 def start(update: Update, context: CallbackContext):
@@ -53,7 +57,7 @@ def start(update: Update, context: CallbackContext):
 def shorten_url(update: Update, context: CallbackContext):
     url = update.message.text
     try:
-        short_url = s.short(url)
+        short_url = shorten_url_with_publicearn(url)
         context.user_data['short_url'] = short_url
         update.message.reply_text('Please provide a file name:')
         logger.info(f'URL shortened successfully: {short_url}')
