@@ -19,6 +19,9 @@ CHANNEL_ID = os.getenv('CHANNEL_ID')
 SHORTENER_API_KEY = os.getenv('SHORTENER_API_KEY')
 SHORTENER_TYPE = os.getenv('SHORTENER_TYPE', 'tinyurl')  # Default to 'tinyurl' if not specified
 
+# Log the SHORTENER_TYPE value
+logger.debug(f"SHORTENER_TYPE value: {SHORTENER_TYPE}")
+
 # Check required environment variables
 if not TELEGRAM_TOKEN:
     raise ValueError("TELEGRAM_TOKEN environment variable is not set.")
@@ -40,7 +43,7 @@ if SHORTENER_TYPE == 'tinyurl':
 elif SHORTENER_TYPE == 'bitly':
     s = pyshorteners.Shortener(api_key=SHORTENER_API_KEY).bitly
 else:
-    logger.error("Unsupported SHORTENER_TYPE. Use 'tinyurl' or 'bitly'.")
+    logger.error(f"Unsupported SHORTENER_TYPE: {SHORTENER_TYPE}. Use 'tinyurl' or 'bitly'.")
     raise ValueError("Unsupported SHORTENER_TYPE. Use 'tinyurl' or 'bitly'.")
 
 # Define the start command handler
