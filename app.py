@@ -17,7 +17,7 @@ TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 CHANNEL_ID = os.getenv('CHANNEL_ID')  # Add CHANNEL_ID to your environment variables
 SHORTENER_API_KEY = os.getenv('SHORTENER_API_KEY')  # Add SHORTENER_API_KEY to your environment variables
-SHORTENER_TYPE = os.getenv('SHORTENER_TYPE', 'tinyurl')  # Default to 'tinyurl' if not specified
+SHORTENER_TYPE = os.getenv('SHORTENER_TYPE')  
 
 if not TELEGRAM_TOKEN:
     raise ValueError("TELEGRAM_TOKEN environment variable is not set.")
