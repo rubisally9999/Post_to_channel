@@ -39,7 +39,7 @@ dispatcher = Dispatcher(bot, None, workers=0)
 # Initialize URL shortener based on type
 s = None
 if SHORTENER_TYPE == 'tinyurl':
-    s = pyshorteners.Shortener()
+    s = pyshorteners.Shortener().tinyurl
 elif SHORTENER_TYPE == 'bitly':
     s = pyshorteners.Shortener(api_key=SHORTENER_API_KEY).bitly
 else:
