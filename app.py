@@ -3,7 +3,8 @@ import requests
 import logging
 from flask import Flask, request, send_from_directory
 from telegram import Bot, Update
-from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler, PicklePersistence
+from telegram.ext import Updater
 
 app = Flask(__name__)
 
@@ -32,11 +33,11 @@ if not CHANNEL_ID:
 if not SHORTENER_API_KEY:
     raise ValueError("SHORTENER_API_KEY environment variable is not set.")
 
-# Initialize Telegram bot
+# Initialize Telegram bot and URL shortener
 bot = Bot(token=TELEGRAM_TOKEN)
 dispatcher = Dispatcher(bot, None, workers=0)
 
-# Function to shorten URL using publicearn.com API
+# Initialize URL shortener based on type
 def shorten_url_with_publicearn(url):
     api_key = SHORTENER_API_KEY
     alias = SHORTENER_ALIAS
@@ -50,9 +51,13 @@ def shorten_url_with_publicearn(url):
         logger.error(f"Error shortening URL: {e}")
         raise
 
+# Define conversation states
+URL, FILE_NAME = range(2)
+
 # Define the start command handler
 def start(update: Update, context: CallbackContext):
     update.message.reply_text('Send me a URL to shorten and post.')
+    return URL
 
 def shorten_url(update: Update, context: CallbackContext):
     url = update.message.text
@@ -61,9 +66,11 @@ def shorten_url(update: Update, context: CallbackContext):
         context.user_data['short_url'] = short_url
         update.message.reply_text('Please provide a file name:')
         logger.info(f'URL shortened successfully: {short_url}')
+        return FILE_NAME
     except Exception as e:
         update.message.reply_text(f'Error shortening URL: {e}')
         logger.error(f'Error shortening URL: {e}')
+        return ConversationHandler.END
 
 def get_file_name(update: Update, context: CallbackContext):
     context.user_data['file_name'] = update.message.text
@@ -76,11 +83,21 @@ def get_file_name(update: Update, context: CallbackContext):
     bot.send_message(chat_id=CHANNEL_ID, text=post_message)
     update.message.reply_text('The information has been posted to the channel.')
     logger.info(f'Posted to channel: File Name: {file_name}, Shortened URL: {short_url}')
+    return ConversationHandler.END
+
+# Define the conversation handler
+conv_handler = ConversationHandler(
+    entry_points=[CommandHandler('start', start)],
+    states={
+        URL: [MessageHandler(Filters.text & ~Filters.command, shorten_url)],
+        FILE_NAME: [MessageHandler(Filters.text & ~Filters.command, get_file_name)],
+    },
+    fallbacks=[],
+    conversation_timeout=600,  # Optional: set a timeout for the conversation
+)
 
 # Add handlers to dispatcher
-dispatcher.add_handler(CommandHandler('start', start))
-dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, shorten_url))
-dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, get_file_name))
+dispatcher.add_handler(conv_handler)
 
 # Webhook route
 @app.route('/webhook', methods=['POST'])
