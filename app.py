@@ -15,18 +15,19 @@ logger = logging.getLogger(__name__)
 # Load configuration from environment variables
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
-CHANNEL_ID = os.getenv('CHANNEL_ID')  # Add CHANNEL_ID to your environment variables
-SHORTENER_API_KEY = os.getenv('SHORTENER_API_KEY')  # Add SHORTENER_API_KEY to your environment variables
-SHORTENER_TYPE = os.getenv('SHORTENER_TYPE')  
+CHANNEL_ID = os.getenv('CHANNEL_ID')
+SHORTENER_API_KEY = os.getenv('SHORTENER_API_KEY')
+SHORTENER_TYPE = os.getenv('SHORTENER_TYPE', 'tinyurl')  # Default to 'tinyurl' if not specified
 
+# Check required environment variables
 if not TELEGRAM_TOKEN:
     raise ValueError("TELEGRAM_TOKEN environment variable is not set.")
 if not WEBHOOK_URL:
     raise ValueError("WEBHOOK_URL environment variable is not set.")
 if not CHANNEL_ID:
     raise ValueError("CHANNEL_ID environment variable is not set.")
-if not SHORTENER_API_KEY:
-    raise ValueError("SHORTENER_API_KEY environment variable is not set.")
+if SHORTENER_TYPE == 'bitly' and not SHORTENER_API_KEY:
+    raise ValueError("SHORTENER_API_KEY environment variable is not set for bitly.")
 
 # Initialize Telegram bot and URL shortener
 bot = Bot(token=TELEGRAM_TOKEN)
@@ -39,6 +40,7 @@ if SHORTENER_TYPE == 'tinyurl':
 elif SHORTENER_TYPE == 'bitly':
     s = pyshorteners.Shortener(api_key=SHORTENER_API_KEY).bitly
 else:
+    logger.error("Unsupported SHORTENER_TYPE. Use 'tinyurl' or 'bitly'.")
     raise ValueError("Unsupported SHORTENER_TYPE. Use 'tinyurl' or 'bitly'.")
 
 # Define the start command handler
