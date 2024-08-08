@@ -3,7 +3,7 @@ import requests
 import logging
 from flask import Flask, request, send_from_directory
 from telegram import Bot, Update
-from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler, PicklePersistence
+from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
 from telegram.ext import Updater
 
 app = Flask(__name__)
@@ -61,6 +61,7 @@ def start(update: Update, context: CallbackContext):
 
 def shorten_url(update: Update, context: CallbackContext):
     url = update.message.text
+    logger.debug(f"Received URL: {url}")
     try:
         short_url = shorten_url_with_publicearn(url)
         context.user_data['short_url'] = short_url
@@ -76,13 +77,22 @@ def get_file_name(update: Update, context: CallbackContext):
     context.user_data['file_name'] = update.message.text
     short_url = context.user_data.get('short_url')
     file_name = context.user_data.get('file_name')
+    if not short_url or not file_name:
+        update.message.reply_text('Missing data. Please start again.')
+        logger.error('Short URL or file name not found in context.')
+        return ConversationHandler.END
+
     post_message = (f"File Name: {file_name}\n"
                     f"Shortened URL: {short_url}\n"
                     f"How to open (Tutorial):\n"
                     f"Open the shortened URL in your Telegram browser.")
-    bot.send_message(chat_id=CHANNEL_ID, text=post_message)
-    update.message.reply_text('The information has been posted to the channel.')
-    logger.info(f'Posted to channel: File Name: {file_name}, Shortened URL: {short_url}')
+    try:
+        bot.send_message(chat_id=CHANNEL_ID, text=post_message)
+        update.message.reply_text('The information has been posted to the channel.')
+        logger.info(f'Posted to channel: File Name: {file_name}, Shortened URL: {short_url}')
+    except Exception as e:
+        update.message.reply_text(f'Error posting to channel: {e}')
+        logger.error(f'Error posting to channel: {e}')
     return ConversationHandler.END
 
 # Define the conversation handler
