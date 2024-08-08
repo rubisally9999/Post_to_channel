@@ -4,6 +4,7 @@ import logging
 from flask import Flask, request, send_from_directory
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters, CallbackContext
+import json
 
 app = Flask(__name__)
 
@@ -26,34 +27,41 @@ if not CHANNEL_ID:
     raise ValueError("CHANNEL_ID environment variable is not set.")
 if not SHORTENER_API_KEY:
     raise ValueError("SHORTENER_API_KEY environment variable is not set.")
+if not SHORTENER_TYPE:
+    raise ValueError("SHORTENER_TYPE environment variable is not set.")
 
-# Initialize Telegram bot and URL shortener
+# Initialize Telegram bot
 bot = Bot(token=TELEGRAM_TOKEN)
 dispatcher = Dispatcher(bot, None, workers=0)
 
-# Initialize URL shortener based on type
-s = None
-if SHORTENER_TYPE == 'publicearn':
-    pass  # No specific initialization needed for PublicEarn in this case
-else:
-    raise ValueError("Unsupported SHORTENER_TYPE. Use 'publicearn'.")
-
+# Initialize URL shortener
 def shorten_url(url):
     try:
         if SHORTENER_TYPE == 'publicearn':
             response = requests.get(f'https://publicearn.com/api?api={SHORTENER_API_KEY}&url={url}')
+            logger.info(f"API Response: {response.text}")  # Log the raw response
             if response.status_code == 200:
                 json_response = response.json()
-                return json_response.get('short_url') or json_response.get('shortened_url')
+                short_url = json_response.get('short_url') or json_response.get('shortened_url')
+                if short_url:
+                    return short_url
+                else:
+                    logger.error("No shortened URL found in response.")
+                    return None
             else:
-                raise ValueError("Error in PublicEarn response.")
+                logger.error(f"Received non-200 status code: {response.status_code}")
+                return None
         else:
             raise ValueError("Unsupported SHORTENER_TYPE. Use 'publicearn'.")
     except Exception as e:
         logger.error(f"Error shortening URL: {e}")
         return None
 
-def shorten_url_handler(update: Update, context: CallbackContext):
+# Define command and message handlers
+def start(update: Update, context: CallbackContext):
+    update.message.reply_text('Send me a URL to shorten and post.')
+
+def handle_url(update: Update, context: CallbackContext):
     url = update.message.text
     short_url = shorten_url(url)
     if short_url:
@@ -62,32 +70,29 @@ def shorten_url_handler(update: Update, context: CallbackContext):
         logger.info(f'URL shortened successfully: {short_url}')
     else:
         update.message.reply_text('Failed to shorten the URL. Please try again.')
-        logger.error('Failed to shorten URL')
 
 def get_file_name(update: Update, context: CallbackContext):
-    file_name = update.message.text
+    context.user_data['file_name'] = update.message.text
     short_url = context.user_data.get('short_url')
-    
-    if not file_name or not short_url:
-        update.message.reply_text('Error: Missing file name or shortened URL. Please try again.')
-        return
-
-    post_message = (f"File Name: {file_name}\n"
-                    f"Shortened URL: {short_url}\n"
-                    f"How to open (Tutorial):\n"
-                    f"Open the shortened URL in your Telegram browser.")
-    
-    try:
-        bot.send_message(chat_id=CHANNEL_ID, text=post_message)
-        update.message.reply_text('The information has been posted to the channel.')
-        logger.info(f'Posted to channel: File Name: {file_name}, Shortened URL: {short_url}')
-    except Exception as e:
-        update.message.reply_text('Failed to post to the channel.')
-        logger.error(f'Error posting to channel: {e}')
+    file_name = context.user_data.get('file_name')
+    if short_url and file_name:
+        post_message = (f"File Name: {file_name}\n"
+                        f"Shortened URL: {short_url}\n"
+                        f"How to open (Tutorial):\n"
+                        f"Open the shortened URL in your Telegram browser.")
+        try:
+            bot.send_message(chat_id=CHANNEL_ID, text=post_message)
+            update.message.reply_text('The information has been posted to the channel.')
+            logger.info(f'Posted to channel: File Name: {file_name}, Shortened URL: {short_url}')
+        except Exception as e:
+            update.message.reply_text('Error posting to channel.')
+            logger.error(f'Error posting to channel: {e}')
+    else:
+        update.message.reply_text('File name or shortened URL is missing.')
 
 # Add handlers to dispatcher
-dispatcher.add_handler(CommandHandler('start', lambda update, context: update.message.reply_text('Send me a URL to shorten and post.')))
-dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, shorten_url_handler))
+dispatcher.add_handler(CommandHandler('start', start))
+dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_url))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, get_file_name))
 
 # Webhook route
@@ -111,7 +116,10 @@ def favicon():
 # Webhook setup route
 @app.route('/setwebhook', methods=['GET', 'POST'])
 def setup_webhook():
-    response = requests.post(f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/setWebhook', data={'url': WEBHOOK_URL})
+    response = requests.post(
+        f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/setWebhook',
+        data={'url': WEBHOOK_URL}
+    )
     if response.json().get('ok'):
         logger.info('Webhook setup successfully')
         return "Webhook setup ok"
