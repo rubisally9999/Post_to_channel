@@ -35,9 +35,14 @@ dispatcher = Dispatcher(bot, None, workers=0)
 def shorten_url(url, alias='CustomAlias'):
     try:
         # Construct URL for Publicearn API with alias and format=text
-        shortener_url = f'https://publicearn.com/api?api={SHORTENER_API_KEY}&url={url}&alias={alias}&format=text'
+        shortener_url = (f'https://publicearn.com/api?api={SHORTENER_API_KEY}'
+                         f'&url={url}&alias={alias}&format=text')
         response = requests.get(shortener_url)
-        logger.info(f"Publicearn API Response: {response.text}")  # Log the raw response
+        
+        # Log the full response for debugging
+        logger.info(f"Publicearn API Response Status Code: {response.status_code}")
+        logger.info(f"Publicearn API Response Text: {response.text}")
+
         if response.status_code == 200:
             short_url = response.text.strip()  # The response is expected to be a plain text URL
             if short_url:
