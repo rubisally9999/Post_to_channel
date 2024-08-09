@@ -84,12 +84,13 @@ def handle_url(update: Update, context: CallbackContext):
                             f"How to open (Tutorial):\n"
                             f"Open the shortened URL in your Telegram browser.")
             try:
-                bot.send_message(chat_id=CHANNEL_ID, text=post_message)
-                update.message.reply_text('The information has been posted to the channel.')
+                response = bot.send_message(chat_id=CHANNEL_ID, text=post_message)
                 logger.info(f'Posted to channel: File Name: {file_name}, Shortened URL: {short_url}')
+                logger.info(f"Telegram API Response: {response}")  # Log response from Telegram API
+                update.message.reply_text('The information has been posted to the channel.')
             except Exception as e:
-                update.message.reply_text('Error posting to channel.')
                 logger.error(f'Error posting to channel: {e}')
+                update.message.reply_text('Error posting to channel.')
             finally:
                 context.user_data['awaiting_file_name'] = False
         else:
