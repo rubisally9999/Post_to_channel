@@ -11,7 +11,7 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Load configuration from environment variables
+# Load environment variables
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 CHANNEL_ID = os.getenv('CHANNEL_ID')
@@ -83,7 +83,6 @@ def handle_url(update: Update, context: CallbackContext):
                             f"Open the shortened URL in your Telegram browser.")
             try:
                 response = bot.send_message(chat_id=CHANNEL_ID, text=post_message)
-                logger.info(f'Telegram API Response: {response}')
                 if response:
                     update.message.reply_text('The information has been posted to the channel.')
                 else:
@@ -91,7 +90,7 @@ def handle_url(update: Update, context: CallbackContext):
                     update.message.reply_text('Failed to post to channel. Please try again.')
             except Exception as e:
                 logger.error(f'Error posting to channel: {e}')
-                update.message.reply_text('Error posting to channel.')
+                update.message.reply_text(f'Error posting to channel: {e}')
             finally:
                 context.user_data['awaiting_file_name'] = False
                 context.user_data['short_url'] = None
