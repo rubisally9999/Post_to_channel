@@ -4,7 +4,6 @@ import logging
 from flask import Flask, request, send_from_directory
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters, CallbackContext
-import json
 
 app = Flask(__name__)
 
@@ -85,9 +84,12 @@ def handle_url(update: Update, context: CallbackContext):
                             f"Open the shortened URL in your Telegram browser.")
             try:
                 response = bot.send_message(chat_id=CHANNEL_ID, text=post_message)
-                logger.info(f'Posted to channel: File Name: {file_name}, Shortened URL: {short_url}')
-                logger.info(f"Telegram API Response: {response}")  # Log response from Telegram API
-                update.message.reply_text('The information has been posted to the channel.')
+                if response:
+                    logger.info(f'Posted to channel: File Name: {file_name}, Shortened URL: {short_url}')
+                    update.message.reply_text('The information has been posted to the channel.')
+                else:
+                    logger.error('Failed to receive a response from Telegram API')
+                    update.message.reply_text('Failed to post to channel. Please try again.')
             except Exception as e:
                 logger.error(f'Error posting to channel: {e}')
                 update.message.reply_text('Error posting to channel.')
