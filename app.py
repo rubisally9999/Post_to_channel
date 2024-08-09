@@ -55,10 +55,10 @@ async def shorten_url(url):
 
 # Define command and message handlers
 def start(update: Update, context: CallbackContext):
-    update.message.reply_text('Please upload a file or send a URL to post.')
+    update.message.reply_text('Send me a URL to shorten and post.')
     context.user_data['awaiting_url'] = True
 
-async def post(update: Update, context: CallbackContext):
+async def handle_message(update: Update, context: CallbackContext):
     if context.user_data.get('awaiting_url'):
         url = update.message.text
         short_url = await shorten_url(url)
@@ -97,8 +97,7 @@ async def post(update: Update, context: CallbackContext):
 
 # Add handlers to dispatcher
 dispatcher.add_handler(CommandHandler('start', start))
-dispatcher.add_handler(CommandHandler('post', post))
-dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, post))
+dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 
 # Webhook route
 @app.route('/webhook', methods=['POST'])
