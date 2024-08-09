@@ -51,31 +51,21 @@ def receive_file_name(update: Update, context: CallbackContext) -> int:
     file_name = update.message.text
     url = context.user_data['url']
     
-    # Post format preparation
-    post_text = f"""
-    📂 *File Name:* _{file_name}_
-
-    🌐 *Link is here:*
-    [Click here]({url})
-
-    💡 *How to Open (Tutorial):*
-        ({TUTORIAL_LINK})
-
-    🚀 Enjoy exploring the content!
-    """
+    # Simple post text
+    post_text = f"File Name: {file_name}\nLink: {url}"
     
     try:
+        logger.debug("Posting message to channel %s", CHANNEL_ID)
+        logger.debug("Message text: %s", post_text)
+        
         # Post to channel
-        response = context.bot.send_message(chat_id=CHANNEL_ID, text=post_text, parse_mode='MarkdownV2')
-        update.message.reply_text("✅ Your file has been posted to the channel!")
+        response = context.bot.send_message(chat_id=CHANNEL_ID, text=post_text)
+        
         logger.debug("Message posted to channel %s", CHANNEL_ID)
-        logger.debug("Response from Telegram: %s", response.to_json())
-    except requests.exceptions.RequestException as e:
-        # Log request-specific exceptions
-        update.message.reply_text("❌ Failed to post the file to the channel.")
-        logger.error("RequestException posting message to channel %s: %s", CHANNEL_ID, e, exc_info=True)
+        logger.debug("Response from Telegram: %s", response)
+        
+        update.message.reply_text("✅ Your file has been posted to the channel!")
     except Exception as e:
-        # Log general exceptions
         update.message.reply_text("❌ Failed to post the file to the channel.")
         logger.error("Error posting message to channel %s: %s", CHANNEL_ID, e, exc_info=True)
     
