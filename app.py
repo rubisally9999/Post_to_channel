@@ -51,21 +51,18 @@ def receive_file_name(update: Update, context: CallbackContext) -> int:
     file_name = update.message.text
     url = context.user_data['url']
     
-    # Post format preparation
+    # Post format preparation (Plain Text for testing)
     post_text = f"""
-    📂 *File Name:* _{file_name}_
+    📂 File Name: {file_name}
 
-    🌐 *Link is here:*
-    [Click here]({url})
+    🌐 Link is here:
+    {url}
 
-    💡 *How to Open (Tutorial):*
-    [Tutorial Link]({TUTORIAL_LINK})
+    💡 How to Open (Tutorial):
+    {TUTORIAL_LINK}
 
     🚀 Enjoy exploring the content!
     """
-    
-    # Sanitize MarkdownV2 special characters
-    post_text = post_text.replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)')
     
     try:
         # Log the message and request URL
@@ -73,7 +70,7 @@ def receive_file_name(update: Update, context: CallbackContext) -> int:
         logger.debug("Message text: %s", post_text)
         
         # Post to channel
-        response = context.bot.send_message(chat_id=CHANNEL_ID, text=post_text, parse_mode='MarkdownV2')
+        response = context.bot.send_message(chat_id=CHANNEL_ID, text=post_text, parse_mode=None)
         
         # Log response from Telegram
         update.message.reply_text("✅ Your file has been posted to the channel!")
