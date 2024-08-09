@@ -17,7 +17,6 @@ TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 CHANNEL_ID = os.getenv('CHANNEL_ID')
 SHORTENER_API_KEY = os.getenv('SHORTENER_API_KEY')
-SHORTENER_TYPE = os.getenv('SHORTENER_TYPE')
 
 if not TELEGRAM_TOKEN:
     raise ValueError("TELEGRAM_TOKEN environment variable is not set.")
@@ -27,56 +26,28 @@ if not CHANNEL_ID:
     raise ValueError("CHANNEL_ID environment variable is not set.")
 if not SHORTENER_API_KEY:
     raise ValueError("SHORTENER_API_KEY environment variable is not set.")
-if not SHORTENER_TYPE:
-    raise ValueError("SHORTENER_TYPE environment variable is not set.")
 
 # Initialize Telegram bot
 bot = Bot(token=TELEGRAM_TOKEN)
 dispatcher = Dispatcher(bot, None, workers=0)
 
 # Initialize URL shortener
-def shorten_url(url, alias=None):
+def shorten_url(url, alias='CustomAlias'):
     try:
-        if SHORTENER_TYPE == 'publicearn':
-            shortener_url = f'https://publicearn.com/api?api={SHORTENER_API_KEY}&url={url}'
-            if alias:
-                shortener_url += f'&alias={alias}'
-            response = requests.get(shortener_url)
-            logger.info(f"Publicearn API Response: {response.text}")  # Log the raw response
-            if response.status_code == 200:
-                json_response = response.json()
-                logger.info(f"Publicearn JSON Response: {json_response}")  # Log the JSON response
-                short_url = json_response.get('short_url') or json_response.get('shortened_url')
-                if short_url:
-                    return short_url
-                else:
-                    logger.error("No shortened URL found in response.")
-                    return None
+        # Construct URL for Publicearn API with alias and format=text
+        shortener_url = f'https://publicearn.com/api?api={SHORTENER_API_KEY}&url={url}&alias={alias}&format=text'
+        response = requests.get(shortener_url)
+        logger.info(f"Publicearn API Response: {response.text}")  # Log the raw response
+        if response.status_code == 200:
+            short_url = response.text.strip()  # The response is expected to be a plain text URL
+            if short_url:
+                return short_url
             else:
-                logger.error(f"Received non-200 status code: {response.status_code}")
-                return None
-        elif SHORTENER_TYPE == 'bitly':
-            headers = {
-                'Authorization': f'Bearer {SHORTENER_API_KEY}',
-                'Content-Type': 'application/json'
-            }
-            data = json.dumps({"long_url": url})
-            response = requests.post('https://api-ssl.bitly.com/v4/shorten', headers=headers, data=data)
-            logger.info(f"Bitly API Response: {response.text}")  # Log the raw response
-            if response.status_code == 200:
-                json_response = response.json()
-                logger.info(f"Bitly JSON Response: {json_response}")  # Log the JSON response
-                short_url = json_response.get('link')
-                if short_url:
-                    return short_url
-                else:
-                    logger.error("No shortened URL found in Bitly response.")
-                    return None
-            else:
-                logger.error(f"Received non-200 status code from Bitly: {response.status_code}")
+                logger.error("No shortened URL found in response.")
                 return None
         else:
-            raise ValueError("Unsupported SHORTENER_TYPE. Use 'publicearn' or 'bitly'.")
+            logger.error(f"Received non-200 status code: {response.status_code}")
+            return None
     except Exception as e:
         logger.error(f"Error shortening URL: {e}")
         return None
@@ -87,8 +58,7 @@ def start(update: Update, context: CallbackContext):
 
 def handle_url(update: Update, context: CallbackContext):
     url = update.message.text
-    alias = "CustomAlias"  # Example alias, modify as needed
-    short_url = shorten_url(url, alias)
+    short_url = shorten_url(url)
     if short_url:
         context.user_data['short_url'] = short_url
         update.message.reply_text('Please provide a file name:')
