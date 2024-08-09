@@ -11,7 +11,7 @@ app = Flask(__name__)
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 CHANNEL_ID = os.getenv('CHANNEL_ID')
-TUTORIAL_LINK = os.getenv('TUTORIAL_LINK')  # Add TUTORIAL_LINK environment variable
+TUTORIAL_LINK = os.getenv('TUTORIAL_LINK')
 
 if not TELEGRAM_TOKEN:
     raise ValueError("TELEGRAM_TOKEN environment variable is not set.")
@@ -27,7 +27,7 @@ bot = Bot(token=TELEGRAM_TOKEN)
 dispatcher = Dispatcher(bot, None, workers=0)
 
 # Set up logging
-logging.basicConfig(level=logging.DEBUG)  # Set to DEBUG level
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Define states for the conversation
@@ -100,10 +100,14 @@ dispatcher.add_handler(conv_handler)
 # Webhook route
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    update = Update.de_json(request.get_json(force=True), bot)
-    dispatcher.process_update(update)
-    logger.debug("Webhook received update: %s", request.get_json(force=True))
-    return 'ok', 200
+    try:
+        update = Update.de_json(request.get_json(force=True), bot)
+        dispatcher.process_update(update)
+        logger.debug("Webhook received update: %s", request.get_json(force=True))
+        return 'ok', 200
+    except Exception as e:
+        logger.error("Error processing webhook update: %s", e, exc_info=True)
+        return 'Internal Server Error', 500
 
 # Home route
 @app.route('/')
@@ -118,15 +122,19 @@ def favicon():
 # Webhook setup route
 @app.route('/setwebhook', methods=['GET', 'POST'])
 def setup_webhook():
-    response = requests.post(
-        f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/setWebhook',
-        data={'url': WEBHOOK_URL}
-    )
-    if response.json().get('ok'):
-        logger.debug("Webhook setup successful")
-        return "Webhook setup ok"
-    else:
-        logger.error("Webhook setup failed: %s", response.json())
+    try:
+        response = requests.post(
+            f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/setWebhook',
+            data={'url': WEBHOOK_URL}
+        )
+        if response.json().get('ok'):
+            logger.debug("Webhook setup successful")
+            return "Webhook setup ok"
+        else:
+            logger.error("Webhook setup failed: %s", response.json())
+            return "Webhook setup failed"
+    except Exception as e:
+        logger.error("Error setting up webhook: %s", e, exc_info=True)
         return "Webhook setup failed"
 
 if __name__ == '__main__':
