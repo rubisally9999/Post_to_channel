@@ -1,10 +1,9 @@
 import os
-import aiohttp
 import logging
+import requests  # Import missing requests module
 from flask import Flask, request, send_from_directory
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters, CallbackContext
-import asyncio
 
 app = Flask(__name__)
 
@@ -32,37 +31,36 @@ bot = Bot(token=TELEGRAM_TOKEN)
 dispatcher = Dispatcher(bot, None, workers=0)
 
 # Shorten URL using the publicearn.com API
-async def shorten_url(url):
+def shorten_url(url):
     try:
-        async with aiohttp.ClientSession() as session:
-            api_url = f"https://publicearn.com/api?api={SHORTENER_API_KEY}&url={url}&alias=CustomAlias&format=text"
-            async with session.get(api_url) as response:
-                if response.status == 200:
-                    short_url = await response.text()
-                    if short_url:
-                        return short_url.strip()
-                    else:
-                        logger.error("No shortened URL found in response.")
-                        return None
-                else:
-                    logger.error(f"Received non-200 status code: {response.status}")
-                    return None
-    except aiohttp.ClientError as e:
-        logger.error(f"AIOHTTP ClientError occurred while shortening URL: {e}")
+        api_url = f"https://publicearn.com/api?api={SHORTENER_API_KEY}&url={url}&alias=CustomAlias&format=text"
+        response = requests.get(api_url)
+        if response.status_code == 200:
+            short_url = response.text.strip()
+            if short_url:
+                return short_url
+            else:
+                logger.error("No shortened URL found in response.")
+                return None
+        else:
+            logger.error(f"Received non-200 status code: {response.status_code}")
+            return None
+    except requests.RequestException as e:
+        logger.error(f"RequestException occurred while shortening URL: {e}")
         return None
     except Exception as e:
         logger.error(f"Exception occurred while shortening URL: {e}")
         return None
 
 # Define command and message handlers
-async def start(update: Update, context: CallbackContext):
+def start(update: Update, context: CallbackContext):
     update.message.reply_text('Send me a URL to shorten and post.')
     context.user_data['awaiting_url'] = True
 
-async def handle_message(update: Update, context: CallbackContext):
+def handle_message(update: Update, context: CallbackContext):
     if context.user_data.get('awaiting_url'):
         url = update.message.text
-        short_url = await shorten_url(url)
+        short_url = shorten_url(url)
         if short_url:
             context.user_data['short_url'] = short_url
             update.message.reply_text(f'Here is your shortened link: {short_url}\nPlease provide a file name:')
@@ -81,7 +79,7 @@ async def handle_message(update: Update, context: CallbackContext):
                             f"How to open (Tutorial):\n"
                             f"Open the shortened URL in your Telegram browser.")
             try:
-                response = await bot.send_message(chat_id=CHANNEL_ID, text=post_message)
+                response = bot.send_message(chat_id=CHANNEL_ID, text=post_message)
                 logger.info(f'Telegram API Response: {response}')
                 if response:
                     update.message.reply_text('The information has been posted to the channel.')
@@ -104,8 +102,7 @@ dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_me
 @app.route('/webhook', methods=['POST'])
 def webhook():
     update = Update.de_json(request.get_json(force=True), bot)
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(dispatcher.process_update(update))
+    dispatcher.process_update(update)
     logger.info('Received update from webhook')
     return 'ok', 200
 
@@ -119,6 +116,7 @@ def home():
 def favicon():
     return send_from_directory(os.getcwd(), 'favicon.ico')
 
+# Webhook setup route
 @app.route('/setwebhook', methods=['GET', 'POST'])
 def setup_webhook():
     try:
@@ -136,5 +134,6 @@ def setup_webhook():
     except Exception as e:
         logger.error(f'Exception occurred while setting up webhook: {e}')
         return "Internal Server Error", 500
+
 if __name__ == '__main__':
     app.run(port=5000)
