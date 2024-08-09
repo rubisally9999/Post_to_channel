@@ -54,11 +54,16 @@ def receive_file_name(update: Update, context: CallbackContext) -> int:
     🚀 Enjoy exploring the content!
     """
     
-    # Post to channel
-    context.bot.send_message(chat_id=CHANNEL_ID, text=post_text, parse_mode='MarkdownV2')
+    try:
+        # Post to channel
+        context.bot.send_message(chat_id=CHANNEL_ID, text=post_text, parse_mode='MarkdownV2')
+        update.message.reply_text("✅ Your file has been posted to the channel!")
+    except Exception as e:
+        # Log the error
+        update.message.reply_text("❌ Failed to post the file to the channel.")
+        print(f"Error posting message: {e}")
     
     # End conversation
-    update.message.reply_text("✅ Your file has been posted to the channel!")
     return ConversationHandler.END
 
 # Cancel command handler
@@ -99,10 +104,9 @@ def favicon():
 # Webhook setup route
 @app.route('/setwebhook', methods=['GET', 'POST'])
 def setup_webhook():
-    webhook_url = f'https://payee-neon.vercel.app/webhook'  # Ensure this URL is correct
     response = requests.post(
         f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/setWebhook',
-        data={'url': webhook_url}
+        data={'url': WEBHOOK_URL}
     )
     if response.json().get('ok'):
         return "Webhook setup ok"
