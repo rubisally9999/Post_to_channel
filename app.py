@@ -121,6 +121,8 @@ def favicon():
 
 # Webhook setup route
 @app.route('/setwebhook', methods=['GET', 'POST'])
+# Webhook setup route
+@app.route('/setwebhook', methods=['GET', 'POST'])
 def setup_webhook():
     response = requests.post(
         f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/setWebhook',
