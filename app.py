@@ -70,12 +70,15 @@ def receive_file_name(update: Update, context: CallbackContext) -> int:
         update.message.reply_text("✅ Your file has been posted to the channel!")
         logger.debug("Message posted to channel %s", CHANNEL_ID)
         logger.debug("Response from Telegram: %s", response)
+    except requests.exceptions.RequestException as e:
+        # Log request-specific exceptions
+        update.message.reply_text("❌ Failed to post the file to the channel.")
+        logger.error("RequestException posting message to channel %s: %s", CHANNEL_ID, e, exc_info=True)
     except Exception as e:
-        # Log the error with more details
+        # Log general exceptions
         update.message.reply_text("❌ Failed to post the file to the channel.")
         logger.error("Error posting message to channel %s: %s", CHANNEL_ID, e, exc_info=True)
     
-    # End conversation
     return ConversationHandler.END
 
 # Cancel command handler
