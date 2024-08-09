@@ -53,13 +53,13 @@ def receive_file_name(update: Update, context: CallbackContext) -> int:
     
     # Post format preparation
     post_text = f"""
-    📂 *File Name:* _{file_name}_
+    📂 File Name: {file_name}
 
-    🌐 *Link is here:*
-    [Click here]({url})
+    🌐 Link is here:
+    {url}
 
-    💡 *How to Open (Tutorial):*
-    [Tutorial Link]({TUTORIAL_LINK})
+    💡 How to Open (Tutorial):
+    {TUTORIAL_LINK}
 
     🚀 Enjoy exploring the content!
     """
