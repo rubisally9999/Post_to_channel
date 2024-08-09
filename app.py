@@ -1,5 +1,5 @@
 import os
-import requests
+import aiohttp
 import logging
 from flask import Flask, request, send_from_directory
 from telegram import Bot, Update
@@ -15,8 +15,7 @@ logger = logging.getLogger(__name__)
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 CHANNEL_ID = os.getenv('CHANNEL_ID')
-SHORTENER_URL = 'https://publicearn.com/api'  # URL of the URL shortener API
-SHORTENER_API_KEY = os.getenv('SHORTENER_API_KEY')  # API key for the URL shortener
+SHORTENER_API_KEY = os.getenv('SHORTENER_API_KEY')
 
 if not TELEGRAM_TOKEN:
     raise ValueError("TELEGRAM_TOKEN environment variable is not set.")
@@ -31,30 +30,25 @@ if not SHORTENER_API_KEY:
 bot = Bot(token=TELEGRAM_TOKEN)
 dispatcher = Dispatcher(bot, None, workers=0)
 
-# Initialize URL shortener
-def shorten_url(url, alias='CustomAlias'):
+# Shorten URL using the publicearn.com API
+async def shorten_url(url):
     try:
-        # Construct the URL for shortening
-        shortener_url = (f'{SHORTENER_URL}?api={SHORTENER_API_KEY}'
-                         f'&url={url}&alias={alias}&format=text')
-        response = requests.get(shortener_url)
-        
-        # Log detailed response for debugging
-        logger.info(f"URL Shortener API Response Status Code: {response.status_code}")
-        logger.info(f"URL Shortener API Response Text: {response.text}")
-
-        # Check for a successful response
-        if response.status_code == 200:
-            short_url = response.text.strip()
-            if short_url:
-                return short_url
-            else:
-                logger.error("No shortened URL found in response.")
-                return None
-        else:
-            logger.error(f"Received non-200 status code: {response.status_code}")
-            logger.error(f"Error details: {response.text}")  # Log detailed error if available
-            return None
+        async with aiohttp.ClientSession() as session:
+            api_url = f"https://publicearn.com/api?api={SHORTENER_API_KEY}&url={url}&alias=CustomAlias&format=text"
+            async with session.get(api_url) as response:
+                if response.status == 200:
+                    short_url = await response.text()
+                    if short_url:
+                        return short_url.strip()
+                    else:
+                        logger.error("No shortened URL found in response.")
+                        return None
+                else:
+                    logger.error(f"Received non-200 status code: {response.status}")
+                    return None
+    except aiohttp.ClientError as e:
+        logger.error(f"AIOHTTP ClientError occurred while shortening URL: {e}")
+        return None
     except Exception as e:
         logger.error(f"Exception occurred while shortening URL: {e}")
         return None
@@ -64,10 +58,10 @@ def start(update: Update, context: CallbackContext):
     update.message.reply_text('Send me a URL to shorten and post.')
     context.user_data['awaiting_url'] = True
 
-def handle_url(update: Update, context: CallbackContext):
+async def handle_url(update: Update, context: CallbackContext):
     if context.user_data.get('awaiting_url'):
         url = update.message.text
-        short_url = shorten_url(url)
+        short_url = await shorten_url(url)
         if short_url:
             context.user_data['short_url'] = short_url
             update.message.reply_text(f'Here is your shortened link: {short_url}\nPlease provide a file name:')
@@ -86,16 +80,13 @@ def handle_url(update: Update, context: CallbackContext):
                             f"How to open (Tutorial):\n"
                             f"Open the shortened URL in your Telegram browser.")
             try:
-                # Split message if too long
-                max_message_length = 4096
-                if len(post_message) > max_message_length:
-                    for i in range(0, len(post_message), max_message_length):
-                        bot.send_message(chat_id=CHANNEL_ID, text=post_message[i:i+max_message_length])
-                else:
-                    response = bot.send_message(chat_id=CHANNEL_ID, text=post_message)
-                
+                response = bot.send_message(chat_id=CHANNEL_ID, text=post_message)
                 logger.info(f'Telegram API Response: {response}')
-                update.message.reply_text('The information has been posted to the channel.')
+                if response:
+                    update.message.reply_text('The information has been posted to the channel.')
+                else:
+                    logger.error('Failed to receive a response from Telegram API')
+                    update.message.reply_text('Failed to post to channel. Please try again.')
             except Exception as e:
                 logger.error(f'Error posting to channel: {e}')
                 update.message.reply_text('Error posting to channel.')
