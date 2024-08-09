@@ -119,21 +119,22 @@ def home():
 def favicon():
     return send_from_directory(os.getcwd(), 'favicon.ico')
 
-# Webhook setup route
-@app.route('/setwebhook', methods=['GET', 'POST'])
-# Webhook setup route
 @app.route('/setwebhook', methods=['GET', 'POST'])
 def setup_webhook():
-    response = requests.post(
-        f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/setWebhook',
-        data={'url': WEBHOOK_URL}
-    )
-    if response.json().get('ok'):
-        logger.info('Webhook setup successfully')
-        return "Webhook setup ok"
-    else:
-        logger.error('Webhook setup failed')
-        return "Webhook setup failed"
-
+    try:
+        response = requests.post(
+            f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/setWebhook',
+            data={'url': WEBHOOK_URL}
+        )
+        response_data = response.json()
+        if response_data.get('ok'):
+            logger.info('Webhook setup successfully')
+            return "Webhook setup ok"
+        else:
+            logger.error('Webhook setup failed')
+            return "Webhook setup failed"
+    except Exception as e:
+        logger.error(f'Exception occurred while setting up webhook: {e}')
+        return "Internal Server Error", 500
 if __name__ == '__main__':
     app.run(port=5000)
