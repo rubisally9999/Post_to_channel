@@ -35,13 +35,17 @@ bot = Bot(token=TELEGRAM_TOKEN)
 dispatcher = Dispatcher(bot, None, workers=0)
 
 # Initialize URL shortener
-def shorten_url(url):
+def shorten_url(url, alias=None):
     try:
         if SHORTENER_TYPE == 'publicearn':
-            response = requests.get(f'https://publicearn.com/api?api={SHORTENER_API_KEY}&url={url}')
-            logger.info(f"API Response: {response.text}")  # Log the raw response
+            shortener_url = f'https://publicearn.com/api?api={SHORTENER_API_KEY}&url={url}'
+            if alias:
+                shortener_url += f'&alias={alias}'
+            response = requests.get(shortener_url)
+            logger.info(f"Publicearn API Response: {response.text}")  # Log the raw response
             if response.status_code == 200:
                 json_response = response.json()
+                logger.info(f"Publicearn JSON Response: {json_response}")  # Log the JSON response
                 short_url = json_response.get('short_url') or json_response.get('shortened_url')
                 if short_url:
                     return short_url
@@ -51,8 +55,28 @@ def shorten_url(url):
             else:
                 logger.error(f"Received non-200 status code: {response.status_code}")
                 return None
+        elif SHORTENER_TYPE == 'bitly':
+            headers = {
+                'Authorization': f'Bearer {SHORTENER_API_KEY}',
+                'Content-Type': 'application/json'
+            }
+            data = json.dumps({"long_url": url})
+            response = requests.post('https://api-ssl.bitly.com/v4/shorten', headers=headers, data=data)
+            logger.info(f"Bitly API Response: {response.text}")  # Log the raw response
+            if response.status_code == 200:
+                json_response = response.json()
+                logger.info(f"Bitly JSON Response: {json_response}")  # Log the JSON response
+                short_url = json_response.get('link')
+                if short_url:
+                    return short_url
+                else:
+                    logger.error("No shortened URL found in Bitly response.")
+                    return None
+            else:
+                logger.error(f"Received non-200 status code from Bitly: {response.status_code}")
+                return None
         else:
-            raise ValueError("Unsupported SHORTENER_TYPE. Use 'publicearn'.")
+            raise ValueError("Unsupported SHORTENER_TYPE. Use 'publicearn' or 'bitly'.")
     except Exception as e:
         logger.error(f"Error shortening URL: {e}")
         return None
@@ -63,7 +87,8 @@ def start(update: Update, context: CallbackContext):
 
 def handle_url(update: Update, context: CallbackContext):
     url = update.message.text
-    short_url = shorten_url(url)
+    alias = "CustomAlias"  # Example alias, modify as needed
+    short_url = shorten_url(url, alias)
     if short_url:
         context.user_data['short_url'] = short_url
         update.message.reply_text('Please provide a file name:')
