@@ -67,8 +67,8 @@ def handle_url(update: Update, context: CallbackContext):
         url = update.message.text
         short_url = shorten_url(url)
         if short_url:
+            update.message.reply_text(f'Here is your shortened URL: {short_url}\nPlease provide a file name:')
             context.user_data['short_url'] = short_url
-            update.message.reply_text('Please provide a file name:')
             context.user_data['awaiting_url'] = False
             context.user_data['awaiting_file_name'] = True
             logger.info(f'URL shortened successfully: {short_url}')
