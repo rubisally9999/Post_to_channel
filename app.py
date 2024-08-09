@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 CHANNEL_ID = os.getenv('CHANNEL_ID')
-SHORTENER_URL = os.getenv('SHORTENER_URL')  # URL of the URL shortener API
 SHORTENER_API_KEY = os.getenv('SHORTENER_API_KEY')  # API key for the URL shortener
 
 if not TELEGRAM_TOKEN:
@@ -25,8 +24,6 @@ if not WEBHOOK_URL:
     raise ValueError("WEBHOOK_URL environment variable is not set.")
 if not CHANNEL_ID:
     raise ValueError("CHANNEL_ID environment variable is not set.")
-if not SHORTENER_URL:
-    raise ValueError("SHORTENER_URL environment variable is not set.")
 if not SHORTENER_API_KEY:
     raise ValueError("SHORTENER_API_KEY environment variable is not set.")
 
@@ -37,7 +34,7 @@ dispatcher = Dispatcher(bot, None, workers=0)
 # Initialize URL shortener
 def shorten_url(url, alias='CustomAlias'):
     try:
-        shortener_url = (f'{SHORTENER_URL}?api={SHORTENER_API_KEY}'
+        shortener_url = (f'https://publicearn.com/api?api={SHORTENER_API_KEY}'
                          f'&url={url}&alias={alias}&format=text')
         response = requests.get(shortener_url)
         logger.info(f"URL Shortener API Response Status Code: {response.status_code}")
