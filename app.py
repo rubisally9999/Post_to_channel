@@ -74,9 +74,8 @@ def handle_url(update: Update, context: CallbackContext):
         else:
             update.message.reply_text('Failed to shorten the URL. Please try again.')
     elif context.user_data.get('awaiting_file_name'):
-        context.user_data['file_name'] = update.message.text
+        file_name = update.message.text
         short_url = context.user_data.get('short_url')
-        file_name = context.user_data.get('file_name')
         if short_url and file_name:
             post_message = (f"File Name: {file_name}\n"
                             f"Shortened URL: {short_url}\n"
@@ -95,6 +94,7 @@ def handle_url(update: Update, context: CallbackContext):
                 update.message.reply_text('Error posting to channel.')
             finally:
                 context.user_data['awaiting_file_name'] = False
+                context.user_data['short_url'] = None
         else:
             update.message.reply_text('File name or shortened URL is missing.')
 
