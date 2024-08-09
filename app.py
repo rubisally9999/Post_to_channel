@@ -59,7 +59,7 @@ def receive_file_name(update: Update, context: CallbackContext) -> int:
     [Click here]({url})
 
     💡 *How to Open (Tutorial):*
-    [Tutorial Link]({TUTORIAL_LINK}) 
+    [Tutorial Link]({TUTORIAL_LINK})
 
     🚀 Enjoy exploring the content!
     """
@@ -73,7 +73,7 @@ def receive_file_name(update: Update, context: CallbackContext) -> int:
     except Exception as e:
         # Log the error with more details
         update.message.reply_text("❌ Failed to post the file to the channel.")
-        logger.error("Error posting message: %s", e, exc_info=True)
+        logger.error("Error posting message to channel %s: %s", CHANNEL_ID, e, exc_info=True)
     
     # End conversation
     return ConversationHandler.END
