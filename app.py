@@ -1,7 +1,6 @@
 import os
 import requests
 import logging
-import textwrap
 from flask import Flask, request, send_from_directory
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters, CallbackContext
@@ -16,6 +15,7 @@ logger = logging.getLogger(__name__)
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 CHANNEL_ID = os.getenv('CHANNEL_ID')
+SHORTENER_URL = 'https://publicearn.com/api'  # URL of the URL shortener API
 SHORTENER_API_KEY = os.getenv('SHORTENER_API_KEY')  # API key for the URL shortener
 
 if not TELEGRAM_TOKEN:
@@ -34,12 +34,16 @@ dispatcher = Dispatcher(bot, None, workers=0)
 # Initialize URL shortener
 def shorten_url(url, alias='CustomAlias'):
     try:
-        shortener_url = (f'https://publicearn.com/api?api={SHORTENER_API_KEY}'
+        # Construct the URL for shortening
+        shortener_url = (f'{SHORTENER_URL}?api={SHORTENER_API_KEY}'
                          f'&url={url}&alias={alias}&format=text')
         response = requests.get(shortener_url)
+        
+        # Log detailed response for debugging
         logger.info(f"URL Shortener API Response Status Code: {response.status_code}")
         logger.info(f"URL Shortener API Response Text: {response.text}")
 
+        # Check for a successful response
         if response.status_code == 200:
             short_url = response.text.strip()
             if short_url:
@@ -49,9 +53,10 @@ def shorten_url(url, alias='CustomAlias'):
                 return None
         else:
             logger.error(f"Received non-200 status code: {response.status_code}")
+            logger.error(f"Error details: {response.text}")  # Log detailed error if available
             return None
     except Exception as e:
-        logger.error(f"Error shortening URL: {e}")
+        logger.error(f"Exception occurred while shortening URL: {e}")
         return None
 
 # Define command and message handlers
@@ -64,37 +69,35 @@ def handle_url(update: Update, context: CallbackContext):
         url = update.message.text
         short_url = shorten_url(url)
         if short_url:
-            update.message.reply_text(f'Here is your shortened URL: {short_url}\nPlease provide a file name:')
             context.user_data['short_url'] = short_url
+            update.message.reply_text(f'Here is your shortened link: {short_url}\nPlease provide a file name:')
             context.user_data['awaiting_url'] = False
             context.user_data['awaiting_file_name'] = True
             logger.info(f'URL shortened successfully: {short_url}')
         else:
             update.message.reply_text('Failed to shorten the URL. Please try again.')
     elif context.user_data.get('awaiting_file_name'):
-        file_name = update.message.text
+        context.user_data['file_name'] = update.message.text
         short_url = context.user_data.get('short_url')
+        file_name = context.user_data.get('file_name')
         if short_url and file_name:
             post_message = (f"File Name: {file_name}\n"
                             f"Shortened URL: {short_url}\n"
                             f"How to open (Tutorial):\n"
                             f"Open the shortened URL in your Telegram browser.")
-
-            # Split message if it's too long
-            max_message_length = 4096
-            for chunk in textwrap.wrap(post_message, max_message_length):
-                try:
-                    response = bot.send_message(chat_id=CHANNEL_ID, text=chunk)
-                    if response:
-                        logger.info(f'Message posted to channel: {response}')
-                    else:
-                        logger.error('Failed to receive a response from Telegram API')
-                        update.message.reply_text('Failed to post to channel. Please try again.')
-                except Exception as e:
-                    logger.error(f'Error posting to channel: {e}')
-                    update.message.reply_text(f'Error posting to channel: {e}')
-            context.user_data['awaiting_file_name'] = False
-            context.user_data['short_url'] = None
+            try:
+                response = bot.send_message(chat_id=CHANNEL_ID, text=post_message)
+                logger.info(f'Telegram API Response: {response}')
+                if response:
+                    update.message.reply_text('The information has been posted to the channel.')
+                else:
+                    logger.error('Failed to receive a response from Telegram API')
+                    update.message.reply_text('Failed to post to channel. Please try again.')
+            except Exception as e:
+                logger.error(f'Error posting to channel: {e}')
+                update.message.reply_text('Error posting to channel.')
+            finally:
+                context.user_data['awaiting_file_name'] = False
         else:
             update.message.reply_text('File name or shortened URL is missing.')
 
