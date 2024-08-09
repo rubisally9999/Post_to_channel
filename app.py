@@ -37,17 +37,14 @@ dispatcher = Dispatcher(bot, None, workers=0)
 # Initialize URL shortener
 def shorten_url(url, alias='CustomAlias'):
     try:
-        # Construct URL for the URL shortener API with alias and format=text
         shortener_url = (f'{SHORTENER_URL}?api={SHORTENER_API_KEY}'
                          f'&url={url}&alias={alias}&format=text')
         response = requests.get(shortener_url)
-        
-        # Log the full response for debugging
         logger.info(f"URL Shortener API Response Status Code: {response.status_code}")
         logger.info(f"URL Shortener API Response Text: {response.text}")
 
         if response.status_code == 200:
-            short_url = response.text.strip()  # The response is expected to be a plain text URL
+            short_url = response.text.strip()
             if short_url:
                 return short_url
             else:
@@ -63,40 +60,44 @@ def shorten_url(url, alias='CustomAlias'):
 # Define command and message handlers
 def start(update: Update, context: CallbackContext):
     update.message.reply_text('Send me a URL to shorten and post.')
+    context.user_data['awaiting_url'] = True
 
 def handle_url(update: Update, context: CallbackContext):
-    url = update.message.text
-    short_url = shorten_url(url)
-    if short_url:
-        context.user_data['short_url'] = short_url
-        update.message.reply_text('Please provide a file name:')
-        logger.info(f'URL shortened successfully: {short_url}')
-    else:
-        update.message.reply_text('Failed to shorten the URL. Please try again.')
-
-def get_file_name(update: Update, context: CallbackContext):
-    context.user_data['file_name'] = update.message.text
-    short_url = context.user_data.get('short_url')
-    file_name = context.user_data.get('file_name')
-    if short_url and file_name:
-        post_message = (f"File Name: {file_name}\n"
-                        f"Shortened URL: {short_url}\n"
-                        f"How to open (Tutorial):\n"
-                        f"Open the shortened URL in your Telegram browser.")
-        try:
-            bot.send_message(chat_id=CHANNEL_ID, text=post_message)
-            update.message.reply_text('The information has been posted to the channel.')
-            logger.info(f'Posted to channel: File Name: {file_name}, Shortened URL: {short_url}')
-        except Exception as e:
-            update.message.reply_text('Error posting to channel.')
-            logger.error(f'Error posting to channel: {e}')
-    else:
-        update.message.reply_text('File name or shortened URL is missing.')
+    if context.user_data.get('awaiting_url'):
+        url = update.message.text
+        short_url = shorten_url(url)
+        if short_url:
+            context.user_data['short_url'] = short_url
+            update.message.reply_text('Please provide a file name:')
+            context.user_data['awaiting_url'] = False
+            context.user_data['awaiting_file_name'] = True
+            logger.info(f'URL shortened successfully: {short_url}')
+        else:
+            update.message.reply_text('Failed to shorten the URL. Please try again.')
+    elif context.user_data.get('awaiting_file_name'):
+        context.user_data['file_name'] = update.message.text
+        short_url = context.user_data.get('short_url')
+        file_name = context.user_data.get('file_name')
+        if short_url and file_name:
+            post_message = (f"File Name: {file_name}\n"
+                            f"Shortened URL: {short_url}\n"
+                            f"How to open (Tutorial):\n"
+                            f"Open the shortened URL in your Telegram browser.")
+            try:
+                bot.send_message(chat_id=CHANNEL_ID, text=post_message)
+                update.message.reply_text('The information has been posted to the channel.')
+                logger.info(f'Posted to channel: File Name: {file_name}, Shortened URL: {short_url}')
+            except Exception as e:
+                update.message.reply_text('Error posting to channel.')
+                logger.error(f'Error posting to channel: {e}')
+            finally:
+                context.user_data['awaiting_file_name'] = False
+        else:
+            update.message.reply_text('File name or shortened URL is missing.')
 
 # Add handlers to dispatcher
 dispatcher.add_handler(CommandHandler('start', start))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_url))
-dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, get_file_name))
 
 # Webhook route
 @app.route('/webhook', methods=['POST'])
