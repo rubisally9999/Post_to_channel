@@ -1,11 +1,11 @@
 import os
 import aiohttp
 import logging
+import requests
 from flask import Flask, request, send_from_directory, make_response
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters, CallbackContext
 import asyncio
-import requests
 
 app = Flask(__name__)
 
