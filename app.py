@@ -4,6 +4,7 @@ import logging
 from flask import Flask, request, send_from_directory
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters, CallbackContext
+import asyncio
 
 app = Flask(__name__)
 
@@ -54,7 +55,7 @@ async def shorten_url(url):
         return None
 
 # Define command and message handlers
-def start(update: Update, context: CallbackContext):
+async def start(update: Update, context: CallbackContext):
     update.message.reply_text('Send me a URL to shorten and post.')
     context.user_data['awaiting_url'] = True
 
@@ -80,7 +81,7 @@ async def handle_message(update: Update, context: CallbackContext):
                             f"How to open (Tutorial):\n"
                             f"Open the shortened URL in your Telegram browser.")
             try:
-                response = bot.send_message(chat_id=CHANNEL_ID, text=post_message)
+                response = await bot.send_message(chat_id=CHANNEL_ID, text=post_message)
                 logger.info(f'Telegram API Response: {response}')
                 if response:
                     update.message.reply_text('The information has been posted to the channel.')
@@ -103,7 +104,8 @@ dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_me
 @app.route('/webhook', methods=['POST'])
 def webhook():
     update = Update.de_json(request.get_json(force=True), bot)
-    dispatcher.process_update(update)
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(dispatcher.process_update(update))
     logger.info('Received update from webhook')
     return 'ok', 200
 
