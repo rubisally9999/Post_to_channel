@@ -53,13 +53,13 @@ def receive_file_name(update: Update, context: CallbackContext) -> int:
     
     # Post format preparation
     post_text = f"""
-    📂 File Name: {file_name}
+    📂 *File Name:* _{file_name}_
 
-    🌐 Link is here:
-    {url}
+    🌐 *Link is here:*
+    [Click here]({url})
 
-    💡 How to Open (Tutorial):
-    {TUTORIAL_LINK}
+    💡 *How to Open (Tutorial):*
+        ({TUTORIAL_LINK})
 
     🚀 Enjoy exploring the content!
     """
@@ -69,7 +69,7 @@ def receive_file_name(update: Update, context: CallbackContext) -> int:
         response = context.bot.send_message(chat_id=CHANNEL_ID, text=post_text, parse_mode='MarkdownV2')
         update.message.reply_text("✅ Your file has been posted to the channel!")
         logger.debug("Message posted to channel %s", CHANNEL_ID)
-        logger.debug("Response from Telegram: %s", response)
+        logger.debug("Response from Telegram: %s", response.to_json())
     except requests.exceptions.RequestException as e:
         # Log request-specific exceptions
         update.message.reply_text("❌ Failed to post the file to the channel.")
