@@ -86,13 +86,16 @@ def handle_url(update: Update, context: CallbackContext):
                             f"How to open (Tutorial):\n"
                             f"Open the shortened URL in your Telegram browser.")
             try:
-                response = bot.send_message(chat_id=CHANNEL_ID, text=post_message)
-                logger.info(f'Telegram API Response: {response}')
-                if response:
-                    update.message.reply_text('The information has been posted to the channel.')
+                # Split message if too long
+                max_message_length = 4096
+                if len(post_message) > max_message_length:
+                    for i in range(0, len(post_message), max_message_length):
+                        bot.send_message(chat_id=CHANNEL_ID, text=post_message[i:i+max_message_length])
                 else:
-                    logger.error('Failed to receive a response from Telegram API')
-                    update.message.reply_text('Failed to post to channel. Please try again.')
+                    response = bot.send_message(chat_id=CHANNEL_ID, text=post_message)
+                
+                logger.info(f'Telegram API Response: {response}')
+                update.message.reply_text('The information has been posted to the channel.')
             except Exception as e:
                 logger.error(f'Error posting to channel: {e}')
                 update.message.reply_text('Error posting to channel.')
