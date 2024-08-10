@@ -51,9 +51,9 @@ def receive_file_name(update: Update, context: CallbackContext) -> int:
     file_name = update.message.text
     url = context.user_data['url']
     
-    # Post format preparation (HTML Text for styling)
+    # Post format preparation (HTML Text for bold and increased size)
     post_text = f"""
-    📂 <b>File Name:</b> <u><font size="4">{file_name}</font></u>
+    📂 <b><u><font size="4">{file_name}</font></u></b>
 
     🌐 Link is here:
     {url}
@@ -69,7 +69,7 @@ def receive_file_name(update: Update, context: CallbackContext) -> int:
         logger.debug("Posting message to channel %s", CHANNEL_ID)
         logger.debug("Message text: %s", post_text)
         
-        # Post to channel
+        # Post to channel with HTML parse mode
         response = context.bot.send_message(chat_id=CHANNEL_ID, text=post_text, parse_mode='HTML')
         
         # Log response from Telegram
