@@ -51,9 +51,9 @@ def receive_file_name(update: Update, context: CallbackContext) -> int:
     file_name = update.message.text
     url = context.user_data['url']
     
-    # Post format preparation (Plain Text for testing)
+    # Post format preparation (HTML Text for styling)
     post_text = f"""
-    📂 File Name: {file_name}
+    📂 <b>File Name:</b> <u><font size="4">{file_name}</font></u>
 
     🌐 Link is here:
     {url}
@@ -70,7 +70,7 @@ def receive_file_name(update: Update, context: CallbackContext) -> int:
         logger.debug("Message text: %s", post_text)
         
         # Post to channel
-        response = context.bot.send_message(chat_id=CHANNEL_ID, text=post_text, parse_mode=None)
+        response = context.bot.send_message(chat_id=CHANNEL_ID, text=post_text, parse_mode='HTML')
         
         # Log response from Telegram
         update.message.reply_text("✅ Your file has been posted to the channel!")
