@@ -51,9 +51,9 @@ def receive_file_name(update: Update, context: CallbackContext) -> int:
     file_name = update.message.text
     url = context.user_data['url']
     
-    # Post format preparation (HTML Text for bold and underline)
+    # Post format preparation (HTML Text for bold and italic)
     post_text = f"""
-    📂 <b><u>{file_name}</u></b>
+    📂 <b><i>{file_name}</i></b>
 
     🌐 Link is here:
     {url}
