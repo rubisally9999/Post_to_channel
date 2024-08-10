@@ -54,7 +54,7 @@ def receive_file_name(update: Update, context: CallbackContext) -> int:
     # Post format preparation (HTML Text for bold and italic)
     post_text = f"""
     📂 File Name:
-    <b><i>{file_name}</i></b>
+    <b>{file_name}</b>
 
     🌐 Link is here:
     {url}
