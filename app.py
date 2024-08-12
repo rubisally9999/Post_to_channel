@@ -56,7 +56,7 @@ def receive_file_name(update: Update, context: CallbackContext) -> int:
     📂 File Name:
     <b>{file_name}</b>
 
-    🌐 Link is here:
+    🌐<b>Link is here:</b>
     {url}
 
     💡 How to Open (Tutorial):
